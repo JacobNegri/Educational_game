@@ -5,6 +5,7 @@ import android.graphics.Point;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Display;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -41,12 +42,19 @@ public class MainActivity extends AppCompatActivity {
     private int blackX;
     private int blackY;
 
+    //Speed
+    private int boxSpeed;
+    private int orangeSpeed;
+    private int pinkSpeed;
+    private int blackSpeed;
+
     //Score
     private int score = 0;
 
     //Initialise Class
     private Handler handler = new Handler();
     private Timer timer = new Timer();
+    private SoundPlayer sound;
 
     //Status check
     private boolean action_flg = false;
@@ -56,6 +64,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        sound = new SoundPlayer(this);
 
         scoreLabel = (TextView) findViewById(R.id.scoreLabel);
         startLabel = (TextView) findViewById(R.id.startLabel);
@@ -72,6 +82,17 @@ public class MainActivity extends AppCompatActivity {
 
         screenWidth = size.x;
         screenHeight = size.y;
+
+        //Box speed depending on screen size
+        boxSpeed = Math.round(screenHeight/60F);
+        orangeSpeed = Math.round(screenHeight/60F);
+        pinkSpeed = Math.round(screenHeight/36F);
+        blackSpeed = Math.round(screenHeight/45F);
+
+        //Log.v("SPEED_BOX", boxSpeed+"");
+        // Log.v("SPEED_ORANGE", orangeSpeed+"");
+        //Log.v("SPEED_PINK", pinkSpeed+"");
+        //Log.v("SPEED_BLACK", blackSpeed+"");
 
         //Moving out of screen
         orange.setX(-80);
@@ -91,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
         hitCheck();
 
         //Orange
-        orangeX -=12;
+        orangeX -=orangeSpeed;
         if(orangeX < 0) {
             orangeX = screenWidth + 20;
             orangeY = (int) Math.floor(Math.random() * (frameHeight - orange.getHeight()));
@@ -100,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
         orange.setY(orangeY);
 
         //Black
-        blackX -=16;
+        blackX -=blackSpeed;
         if(blackX < 0) {
             blackX = screenWidth + 10;
             blackY = (int) Math.floor(Math.random() * (frameHeight - black.getHeight()));
@@ -109,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
         black.setY(blackY);
 
         //Pink
-        pinkX -=20;
+        pinkX -=pinkSpeed;
         if(pinkX  < 0) {
             pinkX  = screenWidth + 5000;
             pinkY = (int) Math.floor(Math.random() * (frameHeight - pink.getHeight()));
@@ -120,10 +141,10 @@ public class MainActivity extends AppCompatActivity {
         //Move Box
         if(action_flg == true) {
             //touching
-            boxY -=20;
+            boxY -=boxSpeed;
         }else {
             //Releasing
-            boxY += 20;
+            boxY += boxSpeed;
         }
 
         //check box position
@@ -147,6 +168,7 @@ public class MainActivity extends AppCompatActivity {
 
             score += 10;
             orangeX = -10;
+            sound.playHitSound();
         }
 
         //Pink
@@ -157,6 +179,7 @@ public class MainActivity extends AppCompatActivity {
 
             score += 30;
             pinkX = -10;
+            sound.playHitSound();
         }
 
         //Black
@@ -168,6 +191,8 @@ public class MainActivity extends AppCompatActivity {
             //Stop timer
             timer.cancel();
             timer = null;
+
+            sound.playOverSound();
 
             // Show result
             Intent intent = new Intent(getApplicationContext(), result.class);
