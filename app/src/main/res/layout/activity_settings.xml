@@ -17,7 +17,7 @@
         android:id="@+id/highScoreLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="High Score : 300"
+        android:text=""
         android:textSize="20sp"
         android:layout_marginTop="80dp"/>
 
@@ -27,6 +27,22 @@
         android:layout_marginTop="50dp"
         android:text="Tweet"
         android:textAllCaps="false"
-        android:onClick="tryAgain"/>
+        android:onClick="menu"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="50dp"
+        android:text="Change Game Speed"
+        android:textAllCaps="false"
+        android:onClick="menu"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="50dp"
+        android:text="Menu"
+        android:textAllCaps="false"
+        android:onClick="menu"/>
 
 </LinearLayout>

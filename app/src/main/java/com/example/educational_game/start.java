@@ -31,4 +31,9 @@ public class start extends AppCompatActivity {
 
         return super.dispatchKeyEvent(event);
     }
+
+    public void settings(View view) {
+        startActivity(new Intent(getApplicationContext(), settings.class));
+
+    }
 }

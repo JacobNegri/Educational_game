@@ -1,226 +1,293 @@
 package com.example.educational_game;
 
-import android.content.Intent;
-import android.graphics.Point;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.Display;
-import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.WindowManager;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView scoreLabel;
-    private TextView startLabel;
-    private ImageView box;
-    private ImageView orange;
-    private ImageView pink;
-    private ImageView black;
+    // Frame
+    private FrameLayout gameFrame;
+    private int frameHeight, frameWidth, initialFrameWidth;
+    private LinearLayout startLayout;
+
+    // Image
+    private ImageView box, black, orange, pink;
+    private Drawable imageBoxRight, imageBoxLeft;
 
     // Size
-    private int frameHeight;
     private int boxSize;
-    private int screenWidth;
-    private int screenHeight;
 
-    //position
-    private int boxY;
-    private int orangeX;
-    private int orangeY;
-    private int pinkX;
-    private int pinkY;
-    private int blackX;
-    private int blackY;
+    // Position
+    private float boxX, boxY;
+    private float blackX, blackY;
+    private float orangeX, orangeY;
+    private float pinkX, pinkY;
 
-    //Speed
-    private int boxSpeed;
-    private int orangeSpeed;
-    private int pinkSpeed;
-    private int blackSpeed;
+    // Score
+    private TextView scoreLabel, highScoreLabel;
+    private int score, highScore, timeCount;
+    private SharedPreferences settings;
 
-    //Score
-    private int score = 0;
-
-    //Initialise Class
+    // Class
+    private Timer timer;
     private Handler handler = new Handler();
-    private Timer timer = new Timer();
-    private SoundPlayer sound;
+    private SoundPlayer soundPlayer;
 
-    //Status check
-    private boolean action_flg = false;
+    // Status
     private boolean start_flg = false;
+    private boolean action_flg = false;
+    private boolean pink_flg = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        sound = new SoundPlayer(this);
+        soundPlayer = new SoundPlayer(this);
 
-        scoreLabel = (TextView) findViewById(R.id.scoreLabel);
-        startLabel = (TextView) findViewById(R.id.startLabel);
-        box = (ImageView) findViewById(R.id.box);
-        orange = (ImageView) findViewById(R.id.orange);
-        pink = (ImageView) findViewById(R.id.pink);
-        black = (ImageView) findViewById(R.id.black);
+        gameFrame = findViewById(R.id.gameFrame);
+        startLayout = findViewById(R.id.startLayout);
+        box = findViewById(R.id.box);
+        black = findViewById(R.id.black);
+        orange = findViewById(R.id.orange);
+        pink = findViewById(R.id.pink);
+        scoreLabel = findViewById(R.id.scoreLabel);
+        highScoreLabel = findViewById(R.id.highScoreLabel);
 
-        //Get Screen Size
-        WindowManager wm = getWindowManager();
-        Display disp = wm.getDefaultDisplay();
-        Point size = new Point();
-        disp.getSize(size);
+        imageBoxLeft = getResources().getDrawable(R.drawable.box_left);
+        imageBoxRight = getResources().getDrawable(R.drawable.box_right);
 
-        screenWidth = size.x;
-        screenHeight = size.y;
-
-        //Box speed depending on screen size
-        boxSpeed = Math.round(screenHeight/60F);
-        orangeSpeed = Math.round(screenHeight/60F);
-        pinkSpeed = Math.round(screenHeight/36F);
-        blackSpeed = Math.round(screenHeight/45F);
-
-        //Log.v("SPEED_BOX", boxSpeed+"");
-        // Log.v("SPEED_ORANGE", orangeSpeed+"");
-        //Log.v("SPEED_PINK", pinkSpeed+"");
-        //Log.v("SPEED_BLACK", blackSpeed+"");
-
-        //Moving out of screen
-        orange.setX(-80);
-        orange.setY(-80);
-        pink.setX(-80);
-        pink.setY(-80);
-        black.setX(-80);
-        black.setY(-80);
-
-        scoreLabel.setText("Score : 0");
-
-
+        // High Score
+        settings = getSharedPreferences("GAME_DATA", Context.MODE_PRIVATE);
+        highScore = settings.getInt("HIGH_SCORE", 0);
+        highScoreLabel.setText("High Score : " + highScore);
     }
 
     public void changePos() {
 
-        hitCheck();
+        // Add timeCount
+        timeCount += 20;
 
-        //Orange
-        orangeX -=orangeSpeed;
-        if(orangeX < 0) {
-            orangeX = screenWidth + 20;
-            orangeY = (int) Math.floor(Math.random() * (frameHeight - orange.getHeight()));
+        // Orange
+        orangeY += 12;
+
+        float orangeCenterX = orangeX + orange.getWidth() / 2;
+        float orangeCenterY = orangeY + orange.getHeight() / 2;
+
+        if (hitCheck(orangeCenterX, orangeCenterY)) {
+            orangeY = frameHeight + 100;
+            score += 10;
+            soundPlayer.playHitOrangeSound();
+        }
+
+        if (orangeY > frameHeight) {
+            orangeY = -100;
+            orangeX = (float) Math.floor(Math.random() * (frameWidth - orange.getWidth()));
         }
         orange.setX(orangeX);
         orange.setY(orangeY);
 
-        //Black
-        blackX -=blackSpeed;
-        if(blackX < 0) {
-            blackX = screenWidth + 10;
-            blackY = (int) Math.floor(Math.random() * (frameHeight - black.getHeight()));
+        // Pink
+        if (!pink_flg && timeCount % 10000 == 0) {
+            pink_flg = true;
+            pinkY = -20;
+            pinkX = (float) Math.floor(Math.random() * (frameWidth - pink.getWidth()));
         }
+
+        if (pink_flg) {
+            pinkY += 20;
+
+            float pinkCenterX = pinkX + pink.getWidth() / 2;
+            float pinkCenterY = pinkY + pink.getWidth() / 2;
+
+            if (hitCheck(pinkCenterX, pinkCenterY)) {
+                pinkY = frameHeight + 30;
+                score += 30;
+                // Change FrameWidth
+                if (initialFrameWidth > frameWidth * 110 / 100) {
+                    frameWidth = frameWidth * 110 / 100;
+                    changeFrameWidth(frameWidth);
+                }
+                soundPlayer.playHitPinkSound();
+            }
+
+            if (pinkY > frameHeight) pink_flg = false;
+            pink.setX(pinkX);
+            pink.setY(pinkY);
+        }
+
+        // Black
+        blackY += 18;
+
+        float blackCenterX = blackX + black.getWidth() / 2;
+        float blackCenterY = blackY + black.getHeight() / 2;
+
+        if (hitCheck(blackCenterX, blackCenterY)) {
+            blackY = frameHeight + 100;
+
+            // Change FrameWidth
+            frameWidth = frameWidth * 80 / 100;
+            changeFrameWidth(frameWidth);
+            soundPlayer.playHitBlackSound();
+            if (frameWidth <= boxSize) {
+                gameOver();
+            }
+
+        }
+
+        if (blackY > frameHeight) {
+            blackY = -100;
+            blackX = (float) Math.floor(Math.random() * (frameWidth - black.getWidth()));
+        }
+
         black.setX(blackX);
         black.setY(blackY);
 
-        //Pink
-        pinkX -=pinkSpeed;
-        if(pinkX  < 0) {
-            pinkX  = screenWidth + 5000;
-            pinkY = (int) Math.floor(Math.random() * (frameHeight - pink.getHeight()));
-        }
-        pink.setX(pinkX);
-        pink.setY(pinkY);
-
-        //Move Box
-        if(action_flg == true) {
-            //touching
-            boxY -=boxSpeed;
-        }else {
-            //Releasing
-            boxY += boxSpeed;
+        // Move Box
+        if (action_flg) {
+            // Touching
+            boxX += 14;
+            box.setImageDrawable(imageBoxRight);
+        } else {
+            // Releasing
+            boxX -= 14;
+            box.setImageDrawable(imageBoxLeft);
         }
 
-        //check box position
-        if(boxY < 0) boxY = 0;
+        // Check box position.
+        if (boxX < 0) {
+            boxX = 0;
+            box.setImageDrawable(imageBoxRight);
+        }
+        if (frameWidth - boxSize < boxX) {
+            boxX = frameWidth - boxSize;
+            box.setImageDrawable(imageBoxLeft);
+        }
 
-        if(boxY > frameHeight - boxSize) boxY = frameHeight - boxSize;
-
-        box.setY(boxY);
+        box.setX(boxX);
 
         scoreLabel.setText("Score : " + score);
-    }
-
-    public void hitCheck() {
-        //If the center of the ball is in the box, it counts asa a hit
-
-        //Orange
-        int orangeCenterX = orangeX + orange.getWidth()/2;
-        int orangeCenterY = orangeY + orange.getHeight()/2;
-
-        if (0 <= orangeCenterX && orangeCenterX <= boxSize && boxY <= orangeCenterY && orangeCenterY <= boxY + boxSize) {
-
-            score += 10;
-            orangeX = -10;
-            sound.playHitSound();
-        }
-
-        //Pink
-        int pinkCenterX = pinkX + pink.getWidth()/2;
-        int pinkCenterY = pinkY + pink.getHeight()/2;
-
-        if (0 <= pinkCenterX && pinkCenterX <= boxSize && boxY <= pinkCenterY && pinkCenterY <= boxY + boxSize) {
-
-            score += 30;
-            pinkX = -10;
-            sound.playHitSound();
-        }
-
-        //Black
-        int blackCenterX = blackX + black.getWidth()/2;
-        int blackCenterY = blackY + black.getHeight()/2;
-
-        if (0 <= blackCenterX && blackCenterX <= boxSize && boxY <= blackCenterY && blackCenterY <= boxY + boxSize) {
-
-            //Stop timer
-            timer.cancel();
-            timer = null;
-
-            sound.playOverSound();
-
-            // Show result
-            Intent intent = new Intent(getApplicationContext(), result.class);
-            intent.putExtra("SCORE", score);
-            startActivity(intent);
-
-        }
 
     }
 
-    public boolean onTouchEvent(MotionEvent me) {
+    public boolean hitCheck(float x, float y) {
+        if (boxX <= x && x <= boxX + boxSize &&
+                boxY <= y && y <= frameHeight) {
+            return true;
+        }
+        return false;
+    }
 
-        if (start_flg == false) {
+    public void changeFrameWidth(int frameWidth) {
+        ViewGroup.LayoutParams params = gameFrame.getLayoutParams();
+        params.width = frameWidth;
+        gameFrame.setLayoutParams(params);
+    }
 
-            start_flg = true;
+    public void gameOver() {
+        // Stop timer.
+        timer.cancel();
+        timer = null;
+        start_flg = false;
 
-            FrameLayout frame = (FrameLayout) findViewById(R.id.frame);
-            frameHeight = frame.getHeight();
+        // Before showing startLayout, sleep 1 second.
+        try {
+            TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
-            boxY = (int)box.getY();
+        changeFrameWidth(initialFrameWidth);
+
+        startLayout.setVisibility(View.VISIBLE);
+        box.setVisibility(View.INVISIBLE);
+        black.setVisibility(View.INVISIBLE);
+        orange.setVisibility(View.INVISIBLE);
+        pink.setVisibility(View.INVISIBLE);
+
+        // Update High Score
+        if (score > highScore) {
+            highScore = score;
+            highScoreLabel.setText("High Score : " + highScore);
+
+            SharedPreferences.Editor editor = settings.edit();
+            editor.putInt("HIGH_SCORE", highScore);
+            editor.commit();
+        }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (start_flg) {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                action_flg = true;
+
+            } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                action_flg = false;
+
+            }
+        }
+        return true;
+    }
+
+    public void startGame(View view) {
+        start_flg = true;
+        startLayout.setVisibility(View.INVISIBLE);
+
+        if (frameHeight == 0) {
+            frameHeight = gameFrame.getHeight();
+            frameWidth = gameFrame.getWidth();
+            initialFrameWidth = frameWidth;
 
             boxSize = box.getHeight();
+            boxX = box.getX();
+            boxY = box.getY();
+        }
 
-            startLabel.setVisibility(View.GONE);
+        frameWidth = initialFrameWidth;
 
-            timer.schedule(new TimerTask() {
-                @Override
-                public void run() {
+        box.setX(0.0f);
+        black.setY(3000.0f);
+        orange.setY(3000.0f);
+        pink.setY(3000.0f);
+
+        blackY = black.getY();
+        orangeY = orange.getY();
+        pinkY = pink.getY();
+
+        box.setVisibility(View.VISIBLE);
+        black.setVisibility(View.VISIBLE);
+        orange.setVisibility(View.VISIBLE);
+        pink.setVisibility(View.VISIBLE);
+
+        timeCount = 0;
+        score = 0;
+        scoreLabel.setText("Score : 0");
+
+
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (start_flg) {
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -228,30 +295,16 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                 }
-            }, 0, 20);
+            }
+        }, 0, 20);
+    }
 
+    public void quitGame(View view) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            finishAndRemoveTask();
         } else {
-            if(me.getAction() == MotionEvent.ACTION_DOWN) {
-                action_flg = true;
-            } else if (me.getAction() == MotionEvent.ACTION_UP) {
-                action_flg = false;
-            }
+            finish();
         }
-
-        return true;
     }
 
-    //Disables the return button to make sure we do not get errors and frozen screens.
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            switch (event.getKeyCode()) {
-                case KeyEvent.KEYCODE_BACK:
-                    return true;
-            }
-        }
-
-        return super.dispatchKeyEvent(event);
-    }
 }
